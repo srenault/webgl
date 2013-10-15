@@ -3,11 +3,11 @@
     function webglStart() {
         var canvas = document.getElementById('world');
         var gl = initGL(canvas);
-        initBuffers(gl);
+        var buffers = initBuffers(gl);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         initShaders(gl).then(function(shaderProgram) {
-            drawScene(gl, shaderProgram);
+            drawScene(gl, shaderProgram, buffers);
         });
     }
 
@@ -42,24 +42,42 @@
     }
 
     function initBuffers(gl) {
-        var buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        var bufferPosition = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferPosition);
         var vertices = [
             0.0,  1.0,  0.0,
            -1.0, -1.0,  0.0,
             1.0, -1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        return buffer;
+
+        var bufferColor = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferColor);
+        var colors = [
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 1.0
+        ];
+         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+        return [bufferPosition, bufferColor];
     }
 
-    function drawScene(gl, shaderProgram) {
+    function drawScene(gl, shaderProgram, buffers) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
         var positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
         gl.enableVertexAttribArray(positionLocation);
-        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+        var color = gl.getAttribLocation(shaderProgram, "aVertexColor");
+        gl.enableVertexAttribArray(color);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[1]);
+        gl.vertexAttribPointer(color, 3, gl.FLOAT, false, 0, 0);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
     }
 
     window.onload = function() {

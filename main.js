@@ -1,13 +1,36 @@
 (function () {
 
+    function Degree(value) {
+        this.value = 0;
+        var last = null;
+
+        this.next = function() {
+            var now = Date.now();
+            var elapsed = now - last;
+            value += (90 * elapsed) / 1000.0;
+            last = now;
+            return value;
+        };
+    };
+
+    function tick(gl, shaderProgram, buffers, mvMatrix, pMatrix, degree) {
+        window.requestAnimationFrame(function() {
+            tick(gl, shaderProgram, buffers, mvMatrix, pMatrix, degree);
+        });
+        drawScene(gl, shaderProgram, buffers, mvMatrix, pMatrix, degree.next());
+    }
+
     function webglStart() {
         var canvas = document.getElementById('world');
         var gl = initGL(canvas);
         var buffers = initBuffers(gl);
+        var mvMatrix = mat4.create();
+        var pMatrix = mat4.create();
+
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         initShaders(gl).then(function(shaderProgram) {
-            drawScene(gl, shaderProgram, buffers);
+            tick(gl, shaderProgram, buffers, mvMatrix, pMatrix, new Degree(0));
         });
     }
 
@@ -37,6 +60,7 @@
             gl.attachShader(shaderProgram, shaders[1]);
             gl.linkProgram(shaderProgram);
             gl.useProgram(shaderProgram);
+
             return shaderProgram;
         });
     }
@@ -63,14 +87,29 @@
         return [bufferPosition, bufferColor];
     }
 
-    function drawScene(gl, shaderProgram, buffers) {
+    function degToRad(d) {
+        return d * Math.PI / 180;
+    }
+
+    function drawScene(gl, shaderProgram, buffers, mvMatrix, pMatrix, degree) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        var positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
+        var positionLocation = gl.getAttribLocation(shaderProgram, "aVertexPosition");
         gl.enableVertexAttribArray(positionLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
         gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+        var pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        mat4.perspective(20, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        gl.uniformMatrix4fv(pMatrixUniform, false, pMatrix);
+
+        var mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        mat4.identity(mvMatrix);
+        mat4.translate(mvMatrix, [0,0,-19]);
+        mat4.rotate(mvMatrix, degToRad(degree), [0, 1, 0]);
+        //mat4.translate(mvMatrix, [-2.5, 1.0, -19.0]);
+        gl.uniformMatrix4fv(mvMatrixUniform, false, mvMatrix);
 
         var color = gl.getAttribLocation(shaderProgram, "aVertexColor");
         gl.enableVertexAttribArray(color);
